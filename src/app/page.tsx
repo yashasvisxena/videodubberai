@@ -58,8 +58,8 @@ export default function NavbarSection() {
           </Group>
         </AppShell.Section>
 
-        <AppShell.Section grow my="sm" component={ScrollArea}>
-          <Stack h="100%" align="center" justify="center" gap="lg">
+        <AppShell.Section component={ScrollArea} style={{scrollMargin:"10px"}}>
+          <Stack align="center" justify="center" gap="lg" >
             {features.map((feature, index) => {
               return (
                 <div
@@ -86,7 +86,7 @@ export default function NavbarSection() {
         </AppShell.Section>
 
         <AppShell.Section>
-          <Stack h={100} align="center" justify="center" gap="lg">
+          <Stack style={{height:"100%"}} align="center" justify="start" gap="lg">
             <div
               style={{
                 display: "flex",
