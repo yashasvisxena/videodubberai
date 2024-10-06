@@ -1,64 +1,63 @@
 "use client";
-import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@mantine/core';
-
+import { useState } from "react";
+import { FileButton, Button, Group, Text } from "@mantine/core";
 export default function File() {
+  const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    
-    if (file) {
-      if (file.type.startsWith('audio/')) {
-        // Create an object URL for the file
-        const fileUrl = URL.createObjectURL(file);
-        
-        // Store file info in sessionStorage
-        sessionStorage.setItem('audioFile', JSON.stringify({
-          name: file.name,
-          url: fileUrl,
-          type: file.type
-        }));
-        
-        // Trigger re-render and redirect to editor page
-        router.refresh();  // Refresh the current page to render Editor
+  const handleFileChange = (selectedFile: File | null) => {
+    if (selectedFile) {
+      const isValid =
+        selectedFile.type === "audio/mp3" || selectedFile.type === "audio/wav";
+
+      if (!isValid) {
+        setError("Invalid file type. Please upload the correct audio file.");
+        setFile(null);
+        setIsSuccess(false);
       } else {
-        setError("Please select a valid audio file (MP3, WAV, etc.)");
+        setError(null);
+        setFile(selectedFile);
+        setIsSuccess(true);
       }
     }
   };
 
   return (
-    <div>
-      <input
-        type="file"
-        accept="audio/*"
-        onChange={handleFileChange}
-        ref={fileInputRef}
-        style={{ display: 'none' }}
-      />
-      <Button
-        onClick={() => fileInputRef.current?.click()}
-        variant="outline"
-        color="violet"
-        size="lg"
-        radius="xl"
-      >
-        Browse my files
-      </Button>
+    <div style={{ position: "relative" }}>
+      <Group justify="center" style={{ padding: "20px 0" }}>
+        <FileButton onChange={handleFileChange} accept="audio/mp3,audio/wav">
+          {(props) => (
+            <Button
+              {...props}
+              variant="outline"
+              className="text-primary"
+              color="violet"
+              size="md"
+              radius="xl"
+            >
+              {isSuccess ? "File Ready - Change File?" : "Browse my files"}
+            </Button>
+          )}
+        </FileButton>
+      </Group>
+
+      {/* Show error if invalid file type is selected */}
       {error && (
-        <div style={{
-          width: "100%", 
-          position: 'fixed', 
-          bottom: 0,
-          padding: "20px",
-          textAlign: "center",
-          backgroundColor: '#1A1B1E'
-        }}>
-          <span style={{ color: 'red' }}>{error}</span>
+        <div
+          style={{
+            width: "100%",
+            position: "fixed",
+            bottom: 0,
+            right: "50%",
+            left: 0,
+            padding: "20px",
+            textAlign: "center",
+            backgroundColor: "var(--mantine-color-primary-0)",
+          }}
+          className="bg-primary"
+        >
+          <Text c="red">{error}</Text>
         </div>
       )}
     </div>
