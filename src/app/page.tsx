@@ -1,34 +1,27 @@
 "use client";
-import {
-  AppShell,
-  Button,
-  Group,
-  ScrollArea,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { AppShell, Group, ScrollArea, Stack, Text } from "@mantine/core";
 import { useDisclosure, useHover } from "@mantine/hooks";
-import { BiMenuAltLeft } from "react-icons/bi";
 import { MdContactSupport } from "react-icons/md";
 import Image from "next/image";
-import { features } from "./components/features";
+import { BiMenuAltLeft } from "react-icons/bi";
 import { GoX } from "react-icons/go";
-import { useState } from "react";
 import Home from "./components/Home";
+import Editor from "./components/editor";
+import { features } from "./components/features";
 
-export default function NavbarSection() {
+
+export default function Base() {
   const [opened, { toggle }] = useDisclosure();
   const { hovered: hoveredExit, ref: refExit } = useHover();
   const { hovered: hoveredSupport, ref: refSupport } = useHover();
   const { hovered: hoveredMainMenu, ref: refMainMenu } = useHover();
+  
+  // Retrieve uploaded file from sessionStorage
+  const audioFile = typeof window !== 'undefined' && sessionStorage.getItem('audioFile');
 
-  const [isEditingMode, setIsEditingMode] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-  const handleFileSuccess = (file: File) => {
-    setSelectedFile(file);
-    setIsEditingMode(true);
+  const handleClearFile = () => {
+    sessionStorage.removeItem('audioFile');
+    window.location.reload();  // To reset the UI
   };
 
   return (
@@ -106,10 +99,7 @@ export default function NavbarSection() {
         </AppShell.Section>
       </AppShell.Navbar>
 
-      <AppShell.Main
-        style={{ display: "flex", flexDirection: "column" }}
-        className="bg-primary text-primary"
-      >
+      <AppShell.Main className="bg-primary text-primary" style={{ display: "flex", flexDirection: "column" }}>
         <Group h="100%" pl="lg" pt="lg" justify="space-between">
           <div ref={refMainMenu}>
             <BiMenuAltLeft
@@ -119,13 +109,13 @@ export default function NavbarSection() {
                 position: "fixed",
                 top: 20,
                 left: 20,
-                zIndex: "1001",
+                zIndex: 1001,
               }}
               onClick={toggle}
               size={40}
             />
           </div>
-          {isEditingMode && selectedFile && (
+          {audioFile && (
             <div ref={refExit}>
               <GoX
                 style={{
@@ -134,14 +124,17 @@ export default function NavbarSection() {
                   position: "fixed",
                   top: 20,
                   right: 20,
-                  zIndex: "1001",
+                  zIndex: 1001,
                 }}
                 size={40}
+                onClick={handleClearFile}
               />
             </div>
           )}
         </Group>
-        {isEditingMode && selectedFile ? <></> : <Home />}
+
+        {/* Conditionally render the Editor if a file is uploaded, otherwise render Home */}
+        {audioFile ? <Editor /> : <Home />}
       </AppShell.Main>
     </AppShell>
   );

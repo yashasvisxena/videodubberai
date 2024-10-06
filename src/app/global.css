@@ -1,5 +1,6 @@
 .bg-primary {
-  background: var(--mantine-color-primary-0);
+  background: #17171e;
+
 }
 .bg-secondary {
   background: var(--mantine-color-primary-1);
