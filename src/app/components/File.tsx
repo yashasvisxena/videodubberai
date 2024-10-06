@@ -10,7 +10,7 @@ export default function File() {
   const router = useRouter();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const file = event.target.files?.[0]
     
     if (file) {
       if (file.type.startsWith('audio/')) {
