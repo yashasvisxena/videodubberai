@@ -4,7 +4,7 @@ import { forwardRef } from "react";
 import { Blockquote, Container, Title, Text } from "@mantine/core";
 import { CiLock } from "react-icons/ci";
 
-const HowTo = forwardRef((_props, ref) => {
+const HowTo = forwardRef<HTMLDivElement>((props, ref) => {
   return (
     <div ref={ref} className="main">
       <Container fluid>

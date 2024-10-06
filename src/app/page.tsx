@@ -23,11 +23,11 @@ export default function NavbarSection() {
   const { hovered: hoveredSupport, ref: refSupport } = useHover();
   const { hovered: hoveredMainMenu, ref: refMainMenu } = useHover();
 
-  const sectionRef = useRef(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
 
   const scrollToSection = () => {
     sectionRef.current?.scrollIntoView({
-      behavior: "smooth", // Smooth scrolling
+      behavior: "smooth", 
     });
   };
 
