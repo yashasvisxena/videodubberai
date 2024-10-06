@@ -12,23 +12,23 @@ import { useDisclosure, useHover } from "@mantine/hooks";
 import { BiMenuAltLeft } from "react-icons/bi";
 import { MdContactSupport } from "react-icons/md";
 import Image from "next/image";
-import { features } from "./features";
-import File from "./File";
-import HowTo from "./HowTo";
-import { useRef } from "react";
+import { features } from "./components/features";
+import { GoX } from "react-icons/go";
+import { useState } from "react";
+import Home from "./components/Home";
 
 export default function NavbarSection() {
   const [opened, { toggle }] = useDisclosure();
-  const { hovered: hoveredMenu, ref: refMenu } = useHover();
+  const { hovered: hoveredExit, ref: refExit } = useHover();
   const { hovered: hoveredSupport, ref: refSupport } = useHover();
   const { hovered: hoveredMainMenu, ref: refMainMenu } = useHover();
 
-  const sectionRef = useRef<HTMLDivElement>(null);
+  const [isEditingMode, setIsEditingMode] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const scrollToSection = () => {
-    sectionRef.current?.scrollIntoView({
-      behavior: "smooth", 
-    });
+  const handleFileSuccess = (file: File) => {
+    setSelectedFile(file);
+    setIsEditingMode(true);
   };
 
   return (
@@ -45,21 +45,14 @@ export default function NavbarSection() {
         className="bg-secondary text-primary"
       >
         <AppShell.Section>
-          <Group h="100%" justify="center" ref={refMenu}>
-            <BiMenuAltLeft
-              style={{
-                visibility: opened ? "visible" : "hidden",
-                color: hoveredMenu ? "gray" : "white",
-                cursor: "pointer",
-              }}
-              onClick={toggle}
-              size={40}
-            />
-          </Group>
+          <Group h="42px" justify="center"></Group>
         </AppShell.Section>
 
-        <AppShell.Section component={ScrollArea} style={{scrollMargin:"10px"}}>
-          <Stack align="center" justify="center" gap="lg" >
+        <AppShell.Section
+          component={ScrollArea}
+          style={{ scrollMargin: "10px" }}
+        >
+          <Stack align="flex-start" justify="flex-start" gap="lg">
             {features.map((feature, index) => {
               return (
                 <div
@@ -86,7 +79,12 @@ export default function NavbarSection() {
         </AppShell.Section>
 
         <AppShell.Section>
-          <Stack style={{height:"100%"}} align="center" justify="start" gap="lg">
+          <Stack
+            style={{ height: "100%" }}
+            align="center"
+            justify="start"
+            gap="lg"
+          >
             <div
               style={{
                 display: "flex",
@@ -112,50 +110,38 @@ export default function NavbarSection() {
         style={{ display: "flex", flexDirection: "column" }}
         className="bg-primary text-primary"
       >
-        <Group h="100%" pl="lg" pt="lg" ref={refMainMenu}>
-          <BiMenuAltLeft
-            style={{
-              visibility: !opened ? "visible" : "hidden",
-              color: hoveredMainMenu ? "gray" : "white",
-              cursor: "pointer",
-              position: "fixed",
-              top: 20,
-              left: 20,
-            }}
-            onClick={toggle}
-            size={40}
-          />
+        <Group h="100%" pl="lg" pt="lg" justify="space-between">
+          <div ref={refMainMenu}>
+            <BiMenuAltLeft
+              style={{
+                color: hoveredMainMenu ? "gray" : "white",
+                cursor: "pointer",
+                position: "fixed",
+                top: 20,
+                left: 20,
+                zIndex: "1001",
+              }}
+              onClick={toggle}
+              size={40}
+            />
+          </div>
+          {isEditingMode && selectedFile && (
+            <div ref={refExit}>
+              <GoX
+                style={{
+                  color: hoveredExit ? "gray" : "white",
+                  cursor: "pointer",
+                  position: "fixed",
+                  top: 20,
+                  right: 20,
+                  zIndex: "1001",
+                }}
+                size={40}
+              />
+            </div>
+          )}
         </Group>
-
-        <AppShell.Section
-          style={{
-            borderBottom: "1px solid #2C2E33",
-            flexGrow: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 20,
-            height: "98vh",
-            widht: "100%",
-          }}
-        >
-          <Group justify="center" style={{ marginBottom: 5 }}>
-            <Button onClick={scrollToSection} variant="transparent" color="white" size="compact-sm">
-              HOW IT WORKS
-            </Button>
-            <Button variant="transparent" color="White" size="compact-sm">
-              JOINER
-            </Button>
-          </Group>
-          <Title style={{ color: "white", fontSize: 40 }}>Audio Cutter</Title>
-          <Text size="xl">
-            Free editor to trim and cut any audio file online
-          </Text>
-          <File />
-        </AppShell.Section>
-        {/* Reference to the HowTo section */}
-        <HowTo ref={sectionRef} />
+        {isEditingMode && selectedFile ? <></> : <Home />}
       </AppShell.Main>
     </AppShell>
   );
