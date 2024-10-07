@@ -1,5 +1,5 @@
 "use client"
-import { AppShell, Button, Group, Text, Title } from '@mantine/core'
+import { AppShell, Button,Group, Text, Title } from '@mantine/core'
 import {useRef} from 'react'
 import File from './File'
 import HowTo from './HowTo'
@@ -40,7 +40,7 @@ function Home() {
       </Button>
     </Group>
     <Title style={{ color: "white", fontSize: 40 }}>Audio Cutter</Title>
-    <Text size="xl">
+    <Text size="xl" style={{textAlign:"center"}}>
       Free editor to trim and cut any audio file online
     </Text>
     <File />

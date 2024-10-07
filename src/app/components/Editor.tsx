@@ -12,72 +12,78 @@ import {
   IconKeyframes,
 } from "@tabler/icons-react";
 import WaveSurfer from "wavesurfer.js";
+import { useAudioFileStore } from "../store/AudioFile.state";
 
-const AudioEditor = () => {
+const Editor = () => {
   const waveformRef = useRef<HTMLDivElement | null>(null);
-  const wavesurfer = useRef<WaveSurfer | null>(null);
+  const wavesurfer = useRef<WaveSurfer | null>(null); // Store the WaveSurfer instance here
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  const [audioFile, setAudioFile] = useState(null);
+
+  // Fetch the audioFile from Zustand store
+  const { audioFile } = useAudioFileStore();
 
   useEffect(() => {
     const loadWaveSurfer = async () => {
-      const WaveSurfer = (await import("wavesurfer.js")).default;
-      const RegionsPlugin = (await import("wavesurfer.js/dist/plugins/regions")).default;
+      if (!audioFile) return;
 
-      const storedFile = sessionStorage.getItem("audioFile");
-      if (storedFile) {
-        const { url } = JSON.parse(storedFile);
-        setAudioFile(url);
+      const WaveSurfer = (await import("wavesurfer.js")).default;
+      const RegionsPlugin = (await import("wavesurfer.js/dist/plugins/regions"))
+        .default;
+
+      // Ensure the previous WaveSurfer instance is destroyed
+      if (wavesurfer.current) {
+        wavesurfer.current.destroy();
+        wavesurfer.current = null;
       }
 
-      // Make sure waveformRef.current is not null before creating WaveSurfer instance
+      // Ensure the waveformRef is present
       if (waveformRef.current) {
-        wavesurfer.current = WaveSurfer.create({
-          container: waveformRef.current,  // Use the ref safely here
-          waveColor: "#4FE3C1",
-          progressColor: "#2C7A7B",
-          cursorColor: "#506AD4",
-          barWidth: 2,
-          barRadius: 3,
-          cursorWidth: 1,
-          height: 128,
-          barGap: 3,
-          plugins: [RegionsPlugin.create()],
-        });
+        const fileUrl = URL.createObjectURL(audioFile); // Generate the object URL from the File object
 
-        wavesurfer.current.on("ready", () => {
-          setDuration(wavesurfer.current!.getDuration());
-        });
+        try {
+          wavesurfer.current = WaveSurfer.create({
+            container: waveformRef.current,
+            waveColor: "#4FE3C1",
+            progressColor: "#2C7A7B",
+            cursorColor: "#506AD4",
+            barWidth: 2,
+            barRadius: 3,
+            cursorWidth: 1,
+            height: 128,
+            barGap: 3,
+            plugins: [RegionsPlugin.create()],
+          });
 
-        wavesurfer.current.on("audioprocess", () => {
-          setCurrentTime(wavesurfer.current!.getCurrentTime());
-        });
+          wavesurfer.current.on("ready", () => {
+            setDuration(wavesurfer.current!.getDuration());
+          });
 
-        wavesurfer.current.on("finish", () => {
-          setIsPlaying(false);
-        });
+          wavesurfer.current.on("audioprocess", () => {
+            setCurrentTime(wavesurfer.current!.getCurrentTime());
+          });
 
-        if (audioFile) {
-          wavesurfer.current.load(audioFile);
+          wavesurfer.current.on("finish", () => {
+            setIsPlaying(false);
+          });
+
+          wavesurfer.current.load(fileUrl);
+        } catch (error) {
+          console.error("Error loading the audio file:", error);
         }
       }
     };
 
     loadWaveSurfer();
 
+    // Cleanup on unmount or audio file change
     return () => {
       if (wavesurfer.current) {
         wavesurfer.current.destroy();
+        wavesurfer.current = null;
       }
     };
-  }, [audioFile]);
-
-  useEffect(() => {
-    if (audioFile && wavesurfer.current) {
-      wavesurfer.current.load(audioFile);
-    }
   }, [audioFile]);
 
   const handlePlayPause = () => {
@@ -91,14 +97,12 @@ const AudioEditor = () => {
     window.history.back();
   };
 
-  
-
-  
-
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
-    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   return (
@@ -115,12 +119,16 @@ const AudioEditor = () => {
       <Group>
         <Group>
           <ActionIcon variant="subtle" color="gray" onClick={handlePlayPause}>
-            {isPlaying ? <IconPlayerPause size={16} /> : <IconPlayerPlay size={16} />}
+            {isPlaying ? (
+              <IconPlayerPause size={16} />
+            ) : (
+              <IconPlayerPlay size={16} />
+            )}
           </ActionIcon>
-          <ActionIcon variant="subtle" color="gray" >
+          <ActionIcon variant="subtle" color="gray">
             <IconCut size={16} />
           </ActionIcon>
-          <ActionIcon variant="subtle" color="gray" >
+          <ActionIcon variant="subtle" color="gray">
             <IconTrash size={16} />
           </ActionIcon>
         </Group>
@@ -149,4 +157,4 @@ const AudioEditor = () => {
   );
 };
 
-export default AudioEditor;
+export default Editor;

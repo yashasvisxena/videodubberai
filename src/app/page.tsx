@@ -1,12 +1,10 @@
 "use client";
 import {
   AppShell,
-  Button,
   Group,
   ScrollArea,
   Stack,
   Text,
-  Title,
 } from "@mantine/core";
 import { useDisclosure, useHover } from "@mantine/hooks";
 import { BiMenuAltLeft } from "react-icons/bi";
@@ -14,19 +12,19 @@ import { MdContactSupport } from "react-icons/md";
 import Image from "next/image";
 import { features } from "./components/features";
 import { GoX } from "react-icons/go";
-import { useState } from "react";
 import Home from "./components/Home";
+import { useAudioFileStore } from "./store/AudioFile.state";
+import Editor from "./components/Editor";
 
-export default function NavbarSection() {
+
+export default function Page() {
   const [opened, { toggle }] = useDisclosure();
   const { hovered: hoveredExit, ref: refExit } = useHover();
   const { hovered: hoveredSupport, ref: refSupport } = useHover();
   const { hovered: hoveredMainMenu, ref: refMainMenu } = useHover();
 
-  const [isEditingMode, setIsEditingMode] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-  
+  // Fetch audioFile from the Zustand store
+  const { audioFile,setAudioFile } = useAudioFileStore();
 
   return (
     <AppShell
@@ -38,18 +36,18 @@ export default function NavbarSection() {
     >
       <AppShell.Navbar
         withBorder={false}
-        p="md"
+        p="sm"
         className="bg-secondary text-primary"
       >
         <AppShell.Section>
-          <Group h="42px" justify="center"></Group>
+          <Group h="80px" justify="center"></Group>
         </AppShell.Section>
 
         <AppShell.Section
           component={ScrollArea}
-          style={{ scrollMargin: "10px" }}
+          style={{ overflowX: "clip" }}
         >
-          <Stack align="flex-start" justify="flex-start" gap="lg">
+          <Stack align="center" justify="flex-start" gap="lg" style={{ overflowX: "clip" }}>
             {features.map((feature, index) => {
               return (
                 <div
@@ -60,7 +58,7 @@ export default function NavbarSection() {
                     alignItems: "center",
                     cursor: "pointer",
                     gap: "5px",
-                    padding: 5,
+                    padding: 2,
                   }}
                 >
                   {/* Icon */}
@@ -77,10 +75,10 @@ export default function NavbarSection() {
 
         <AppShell.Section>
           <Stack
-            style={{ height: "100%" }}
+            style={{ height: "150px", overflow: "hidden" }}
             align="center"
-            justify="start"
-            gap="lg"
+            justify="center"
+            gap="md"
           >
             <div
               style={{
@@ -88,6 +86,7 @@ export default function NavbarSection() {
                 flexDirection: "column",
                 alignItems: "center",
                 cursor: "pointer",
+                overflow: "hidden",
               }}
               ref={refSupport}
             >
@@ -122,7 +121,9 @@ export default function NavbarSection() {
               size={40}
             />
           </div>
-          {isEditingMode && selectedFile && (
+
+          {/* Conditionally render the GoX icon if an audio file exists */}
+          {audioFile && (
             <div ref={refExit}>
               <GoX
                 style={{
@@ -133,12 +134,19 @@ export default function NavbarSection() {
                   right: 20,
                   zIndex: "1001",
                 }}
+                onClick={() => {
+                  setAudioFile(null);
+                }}
                 size={40}
               />
             </div>
           )}
         </Group>
-        {isEditingMode && selectedFile ? <></> : <Home />}
+        {audioFile ? (
+          <Editor/>
+        ) : (
+          <Home />
+        )}
       </AppShell.Main>
     </AppShell>
   );
