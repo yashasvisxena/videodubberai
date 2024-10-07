@@ -160,82 +160,48 @@ const Editor = () => {
 
   const handleIsolateRegion = async () => {
     if (!wavesurfer.current || !regionRef.current || !audioFile) return;
-  
+
     setIsProcessing(true);
-  
+
     try {
       const audioContext = new AudioContext();
-      const audioBuffer = wavesurfer.current.getDecodedData();
-  
+      const audioBuffer = await wavesurfer.current.getDecodedData();
+
       if (!audioBuffer) {
         throw new Error("Failed to get decoded audio data");
       }
-  
-      const startOffset = Math.floor(regionRef.current.start * audioBuffer.sampleRate);
-      const endOffset = Math.floor(regionRef.current.end * audioBuffer.sampleRate);
-      const newLength = endOffset - startOffset;
-  
-      if (newLength <= 0) {
-        throw new Error("Invalid region selection");
-      }
-  
+
+      const startOffset = Math.floor(
+        regionRef.current.start * audioBuffer.sampleRate
+      );
+      const endOffset = Math.floor(
+        regionRef.current.end * audioBuffer.sampleRate
+      );
+
       const newBuffer = audioContext.createBuffer(
         audioBuffer.numberOfChannels,
-        newLength,
+        endOffset - startOffset,
         audioBuffer.sampleRate
       );
-  
-      // Copy the selected region to the new buffer
+
       for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
         const newChannelData = newBuffer.getChannelData(channel);
         const originalChannelData = audioBuffer.getChannelData(channel);
-        for (let i = 0; i < newLength; i++) {
+        for (let i = 0; i < newBuffer.length; i++) {
           newChannelData[i] = originalChannelData[i + startOffset];
         }
       }
-  
-      // Store current play state
-      const wasPlaying = wavesurfer.current.isPlaying();
-      if (wasPlaying) {
-        wavesurfer.current.pause();
-      }
-  
-      // Remove existing regions
-      wavesurfer.current.regions.clear();
-  
-      // Load the new buffer
+
       wavesurfer.current.loadDecodedBuffer(newBuffer);
-  
-      // Wait for the new buffer to load
-      await new Promise<void>((resolve) => {
-        wavesurfer.current?.on('ready', () => {
-          // Create new region for the entire audio
-          const newRegion = wavesurfer.current?.regions.addRegion({
-            start: 0,
-            end: newBuffer.duration,
-            color: "rgba(0, 255, 0, 0.2)",
-            drag: false,
-            resize: true,
-          });
-  
-          // Update refs and state
-          regionRef.current = newRegion as Region;
-          setDuration(newBuffer.duration);
-          setCurrentTime(0);
-  
-          // Restore play state if needed
-          if (wasPlaying) {
-            wavesurfer.current?.play();
-          }
-  
-          resolve();
-        });
-      });
-  
+
+      if (regionRef.current) {
+        regionRef.current.start = 0;
+        regionRef.current.end = newBuffer.duration;
+      }
+
+      setDuration(newBuffer.duration);
     } catch (error) {
       console.error("Error isolating region:", error);
-      // Optionally, you can add user feedback here
-      // showErrorNotification("Failed to isolate region");
     } finally {
       setIsProcessing(false);
     }
