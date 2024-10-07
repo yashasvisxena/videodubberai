@@ -37,7 +37,7 @@ export default function File() {
         style={{color:"white"}}
         onClick={() => fileInputRef.current?.click()}
         variant="outline"
-        color="violet"
+        color="#665cc2"
         size="md"
         radius="xl"
       >

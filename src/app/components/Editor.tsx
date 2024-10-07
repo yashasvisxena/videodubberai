@@ -1,84 +1,146 @@
-"use client";
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Stack, Text, Group, ActionIcon } from "@mantine/core";
+import { Button, Stack, Text, Group } from "@mantine/core";
 import {
   IconPlayerPlay,
   IconPlayerPause,
-  IconCut,
-  IconTrash,
-  IconArrowsShuffle,
-  IconWaveSine,
-  IconMicrophone,
-  IconKeyframes,
+  IconDownload,
+  IconScissors,
 } from "@tabler/icons-react";
 import WaveSurfer from "wavesurfer.js";
+import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js";
+import "./style.css";
 import { useAudioFileStore } from "../store/AudioFile.state";
 
+
+// Define types for WaveSurfer and Region
+interface Region {
+  start: number;
+  end: number;
+  id: string;
+  color: string;
+  drag: boolean;
+  resize: boolean;
+  on: (event: string, callback: () => void) => void;
+}
+
+// Extend WaveSurfer type to include missing methods
+interface ExtendedWaveSurfer extends WaveSurfer {
+  getDecodedData: () => AudioBuffer | null;
+  loadDecodedBuffer: (buffer: AudioBuffer) => void;
+}
+
 const Editor = () => {
-  const waveformRef = useRef<HTMLDivElement | null>(null);
-  const wavesurfer = useRef<WaveSurfer | null>(null); // Store the WaveSurfer instance here
+  const waveformRef = useRef<HTMLDivElement>(null);
+  const wavesurfer = useRef<ExtendedWaveSurfer | null>(null);
+  const regionRef = useRef<Region | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Fetch the audioFile from Zustand store
   const { audioFile } = useAudioFileStore();
+  const fileName = audioFile ? audioFile.name : "";
 
   useEffect(() => {
+    if (!audioFile) return;
+
     const loadWaveSurfer = async () => {
-      if (!audioFile) return;
-
-      const WaveSurfer = (await import("wavesurfer.js")).default;
-      const RegionsPlugin = (await import("wavesurfer.js/dist/plugins/regions"))
-        .default;
-
-      // Ensure the previous WaveSurfer instance is destroyed
+      // Cleanup previous instance
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       if (wavesurfer.current) {
         wavesurfer.current.destroy();
         wavesurfer.current = null;
       }
 
-      // Ensure the waveformRef is present
-      if (waveformRef.current) {
-        const fileUrl = URL.createObjectURL(audioFile); // Generate the object URL from the File object
+      // Create new abort controller
+      abortControllerRef.current = new AbortController();
 
+      if (waveformRef.current) {
         try {
+          const fileUrl = URL.createObjectURL(audioFile);
+
+          const regionsPlugin = RegionsPlugin.create();
           wavesurfer.current = WaveSurfer.create({
             container: waveformRef.current,
-            waveColor: "#4FE3C1",
-            progressColor: "#2C7A7B",
-            cursorColor: "#506AD4",
-            barWidth: 2,
-            barRadius: 3,
+            waveColor: "#00fe8f",
+            progressColor: "#00fe8f",
+            cursorColor: "#e3e3e4",
+            barWidth: 0,
+            barRadius: 0,
             cursorWidth: 1,
-            height: 128,
-            barGap: 3,
-            plugins: [RegionsPlugin.create()],
-          });
+            height: 150,
+            barGap: 0,
+            plugins: [regionsPlugin],
+          }) as ExtendedWaveSurfer;
 
           wavesurfer.current.on("ready", () => {
-            setDuration(wavesurfer.current!.getDuration());
-          });
+            if (!wavesurfer.current) return;
 
-          wavesurfer.current.on("audioprocess", () => {
-            setCurrentTime(wavesurfer.current!.getCurrentTime());
+            const audioDuration = wavesurfer.current.getDuration();
+            setDuration(audioDuration);
+
+            const region = regionsPlugin.addRegion({
+              start: 0,
+              end: audioDuration,
+              color: "rgba(0, 255, 0, 0.2)",
+              drag: false,
+              resize: true,
+            }) as Region;
+
+            regionRef.current = region;
+
+            region.on("update-end", () => {
+              if (wavesurfer.current && regionRef.current) {
+                wavesurfer.current.setTime(regionRef.current.start);
+                wavesurfer.current.play();
+                setIsPlaying(true);
+              }
+            });
+
+            wavesurfer.current.on("audioprocess", () => {
+              if (!wavesurfer.current) return;
+              const currentTime = wavesurfer.current.getCurrentTime();
+              setCurrentTime(currentTime);
+
+              if (
+                regionRef.current &&
+                (currentTime < regionRef.current.start ||
+                  currentTime >= regionRef.current.end)
+              ) {
+                wavesurfer.current.setTime(regionRef.current.start);
+                if (currentTime >= regionRef.current.end) {
+                  wavesurfer.current.pause();
+                  setIsPlaying(false);
+                }
+              }
+            });
           });
 
           wavesurfer.current.on("finish", () => {
             setIsPlaying(false);
           });
 
-          wavesurfer.current.load(fileUrl);
+          // Load audio file without passing AbortSignal
+          await wavesurfer.current.load(fileUrl);
         } catch (error) {
-          console.error("Error loading the audio file:", error);
+          if (error instanceof Error && error.name === "AbortError") {
+            console.log("Loading was aborted");
+          } else {
+            console.error("Error loading audio:", error);
+          }
         }
       }
     };
 
     loadWaveSurfer();
 
-    // Cleanup on unmount or audio file change
     return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       if (wavesurfer.current) {
         wavesurfer.current.destroy();
         wavesurfer.current = null;
@@ -87,14 +149,178 @@ const Editor = () => {
   }, [audioFile]);
 
   const handlePlayPause = () => {
-    if (wavesurfer.current) {
+    if (wavesurfer.current && regionRef.current) {
+      if (!isPlaying) {
+        wavesurfer.current.setTime(regionRef.current.start);
+      }
       wavesurfer.current.playPause();
       setIsPlaying(!isPlaying);
     }
   };
 
-  const back = () => {
-    window.history.back();
+  const handleIsolateRegion = async () => {
+    if (!wavesurfer.current || !regionRef.current || !audioFile) return;
+  
+    setIsProcessing(true);
+  
+    try {
+      const audioContext = new AudioContext();
+      const audioBuffer = wavesurfer.current.getDecodedData();
+  
+      if (!audioBuffer) {
+        throw new Error("Failed to get decoded audio data");
+      }
+  
+      const startOffset = Math.floor(regionRef.current.start * audioBuffer.sampleRate);
+      const endOffset = Math.floor(regionRef.current.end * audioBuffer.sampleRate);
+      const newLength = endOffset - startOffset;
+  
+      if (newLength <= 0) {
+        throw new Error("Invalid region selection");
+      }
+  
+      const newBuffer = audioContext.createBuffer(
+        audioBuffer.numberOfChannels,
+        newLength,
+        audioBuffer.sampleRate
+      );
+  
+      // Copy the selected region to the new buffer
+      for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+        const newChannelData = newBuffer.getChannelData(channel);
+        const originalChannelData = audioBuffer.getChannelData(channel);
+        for (let i = 0; i < newLength; i++) {
+          newChannelData[i] = originalChannelData[i + startOffset];
+        }
+      }
+  
+      // Store current play state
+      const wasPlaying = wavesurfer.current.isPlaying();
+      if (wasPlaying) {
+        wavesurfer.current.pause();
+      }
+  
+      // Remove existing regions
+      wavesurfer.current.regions.clear();
+  
+      // Load the new buffer
+      wavesurfer.current.loadDecodedBuffer(newBuffer);
+  
+      // Wait for the new buffer to load
+      await new Promise<void>((resolve) => {
+        wavesurfer.current?.on('ready', () => {
+          // Create new region for the entire audio
+          const newRegion = wavesurfer.current?.regions.addRegion({
+            start: 0,
+            end: newBuffer.duration,
+            color: "rgba(0, 255, 0, 0.2)",
+            drag: false,
+            resize: true,
+          });
+  
+          // Update refs and state
+          regionRef.current = newRegion as Region;
+          setDuration(newBuffer.duration);
+          setCurrentTime(0);
+  
+          // Restore play state if needed
+          if (wasPlaying) {
+            wavesurfer.current?.play();
+          }
+  
+          resolve();
+        });
+      });
+  
+    } catch (error) {
+      console.error("Error isolating region:", error);
+      // Optionally, you can add user feedback here
+      // showErrorNotification("Failed to isolate region");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDownloadRegion = async () => {
+    if (!wavesurfer.current || !regionRef.current || !audioFile) return;
+
+    setIsProcessing(true);
+
+    try {
+      const audioContext = new AudioContext();
+      const audioBuffer = await wavesurfer.current.getDecodedData();
+
+      if (!audioBuffer) {
+        throw new Error("Failed to get decoded audio data");
+        return;
+      }
+
+      const startOffset = Math.floor(
+        regionRef.current.start * audioBuffer.sampleRate
+      );
+      const endOffset = Math.floor(
+        regionRef.current.end * audioBuffer.sampleRate
+      );
+
+      const newBuffer = audioContext.createBuffer(
+        audioBuffer.numberOfChannels,
+        endOffset - startOffset,
+        audioBuffer.sampleRate
+      );
+
+      for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+        const newChannelData = newBuffer.getChannelData(channel);
+        const originalChannelData = audioBuffer.getChannelData(channel);
+        for (let i = 0; i < newBuffer.length; i++) {
+          newChannelData[i] = originalChannelData[i + startOffset];
+        }
+      }
+
+      // Convert buffer to wav file
+      const offlineAudioContext = new OfflineAudioContext(
+        newBuffer.numberOfChannels,
+        newBuffer.length,
+        newBuffer.sampleRate
+      );
+
+      const source = offlineAudioContext.createBufferSource();
+      source.buffer = newBuffer;
+      source.connect(offlineAudioContext.destination);
+      source.start();
+
+      const renderedBuffer = await offlineAudioContext.startRendering();
+
+      const wavBlob = await new Promise<Blob>((resolve) => {
+        const audioContext = new AudioContext();
+        const mediaStreamDestination =
+          audioContext.createMediaStreamDestination();
+        const mediaRecorder = new MediaRecorder(mediaStreamDestination.stream);
+        const chunks: BlobPart[] = [];
+
+        const source = audioContext.createBufferSource();
+        source.buffer = renderedBuffer;
+        source.connect(mediaStreamDestination);
+
+        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+        mediaRecorder.onstop = () =>
+          resolve(new Blob(chunks, { type: "audio/wav" }));
+
+        mediaRecorder.start();
+        source.start();
+        source.onended = () => mediaRecorder.stop();
+      });
+
+      const url = URL.createObjectURL(wavBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${fileName.split(".")[0]}_trimmed.wav`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading region:", error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const formatTime = (time: number) => {
@@ -106,8 +332,23 @@ const Editor = () => {
   };
 
   return (
-    <Stack>
-      <div ref={waveformRef} style={{ width: "100%", background: "#2C2E33" }} />
+    <Stack
+      align="stretch"
+      justify="center"
+      gap="lg"
+      p="xl"
+      style={{ height: "100vh" }}
+    >
+      <Group justify="flex-end" mr={"sm"}>
+        <Text size="sm" c="dimmed">
+          {fileName}
+        </Text>
+      </Group>
+      <div
+        id="waveform"
+        ref={waveformRef}
+        style={{ width: "100%", background: "#1f1e29" }}
+      />
       <Group>
         <Text size="sm" color="dimmed">
           {formatTime(currentTime)}
@@ -116,42 +357,33 @@ const Editor = () => {
           {formatTime(duration)}
         </Text>
       </Group>
-      <Group>
-        <Group>
-          <ActionIcon variant="subtle" color="gray" onClick={handlePlayPause}>
-            {isPlaying ? (
+      <Group align="center">
+        <Button
+          onClick={handlePlayPause}
+          leftSection={
+            isPlaying ? (
               <IconPlayerPause size={16} />
             ) : (
               <IconPlayerPlay size={16} />
-            )}
-          </ActionIcon>
-          <ActionIcon variant="subtle" color="gray">
-            <IconCut size={16} />
-          </ActionIcon>
-          <ActionIcon variant="subtle" color="gray">
-            <IconTrash size={16} />
-          </ActionIcon>
-        </Group>
-        <Group>
-          <ActionIcon variant="subtle" color="gray">
-            <IconArrowsShuffle size={16} />
-          </ActionIcon>
-          <ActionIcon variant="subtle" color="gray">
-            <IconWaveSine size={16} />
-          </ActionIcon>
-          <ActionIcon variant="subtle" color="gray">
-            <IconMicrophone size={16} />
-          </ActionIcon>
-          <ActionIcon variant="subtle" color="gray">
-            <IconKeyframes size={16} />
-          </ActionIcon>
-        </Group>
-      </Group>
-      <Group>
-        <Button variant="light" onClick={back}>
-          Cancel
+            )
+          }
+        >
+          {isPlaying ? "Pause" : "Play"}
         </Button>
-        <Button>Save</Button>
+        <Button
+          onClick={handleIsolateRegion}
+          leftSection={<IconScissors size={16} />}
+          disabled={isProcessing}
+        >
+          Isolate Region
+        </Button>
+        <Button
+          onClick={handleDownloadRegion}
+          leftSection={<IconDownload size={16} />}
+          disabled={isProcessing}
+        >
+          Download Region
+        </Button>
       </Group>
     </Stack>
   );

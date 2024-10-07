@@ -1,5 +1,5 @@
 "use client"
-import { AppShell, Button,Group, Text, Title } from '@mantine/core'
+import { AppShell, Button,Group, Stack, Text, Title } from '@mantine/core'
 import {useRef} from 'react'
 import File from './File'
 import HowTo from './HowTo'
@@ -26,12 +26,18 @@ function Home() {
       widht: "100%",
     }}
   >
-    <Group justify="center" style={{ marginBottom: 5 }}>
+    <Stack
+    h={300}
+    align="center"
+    justify="space-evenly"
+    gap="md">
+    <Group justify="center" mb={10}>
       <Button
         onClick={scrollToSection}
         variant="transparent"
         color="white"
         size="compact-sm"
+        style={{ fontWeight:500 }}
       >
         HOW IT WORKS
       </Button>
@@ -39,11 +45,12 @@ function Home() {
         JOINER
       </Button>
     </Group>
-    <Title style={{ color: "white", fontSize: 40 }}>Audio Cutter</Title>
-    <Text size="xl" style={{textAlign:"center"}}>
+    <Title style={{ color: "white", fontSize: 50 , fontWeight:500 }}>Audio Cutter</Title>
+    <Text size="xl" mb={'sm'} c="#c9d1e1" style={{textAlign:"center" , fontSize:25}}>
       Free editor to trim and cut any audio file online
     </Text>
     <File />
+    </Stack>
   </AppShell.Section>
   <HowTo ref={sectionRef} /></div>
   )

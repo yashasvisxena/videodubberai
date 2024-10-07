@@ -1,0 +1,11 @@
+#waveform{
+    border-radius: 5px;
+}
+#waveform ::part(region-handle) {
+    border-right-width: 10px;
+    border-radius: 10px;
+    border-right-color: #6ae0c4;
+    border-left-width: 10px;
+  border-left-color: #6ae0c4;
+  }
+

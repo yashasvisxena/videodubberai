@@ -32,7 +32,7 @@ const HowTo = forwardRef<HTMLDivElement>((props, ref) => {
           </Text>
         </Blockquote>
 
-        <Title order={1} className="How" mt="lg">
+        <Title order={1} className="How" mt="lg" fz={"h2"}>
           <CiLock />
           Privacy and Security Guaranteed
         </Title>
@@ -42,7 +42,7 @@ const HowTo = forwardRef<HTMLDivElement>((props, ref) => {
           mt="xl"
           className="block"
         >
-          <Text className="text">
+          <Text className="text" >
             This is a serverless app. Your files do not leave your device,
             ensuring complete privacy and security.
           </Text>
