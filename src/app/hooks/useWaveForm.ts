@@ -16,6 +16,7 @@ export const useWaveform = ({ audioFile, waveformRef }: UseWaveformProps) => {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentAudioFile, setCurrentAudioFile] = useState<File | null>(null);
 
   const initializeWaveSurfer = async (audioBlob: Blob) => {
     if (wavesurfer.current) {
@@ -55,7 +56,6 @@ export const useWaveform = ({ audioFile, waveformRef }: UseWaveformProps) => {
           if (newWaveSurfer && regionRef.current) {
             newWaveSurfer.setTime(regionRef.current.start);
             if (isPlaying) newWaveSurfer.play();
-            // setIsPlaying(true);
           }
         });
       });
@@ -83,6 +83,7 @@ export const useWaveform = ({ audioFile, waveformRef }: UseWaveformProps) => {
       abortControllerRef.current = new AbortController();
 
       try {
+        setCurrentAudioFile(audioFile);
         await initializeWaveSurfer(audioFile);
       } catch (error) {
         if (error instanceof Error) {
@@ -118,13 +119,13 @@ export const useWaveform = ({ audioFile, waveformRef }: UseWaveformProps) => {
   };
 
   const handleCut = async () => {
-    if (!wavesurfer.current || !regionRef.current || !audioFile) return;
+    if (!wavesurfer.current || !regionRef.current || !currentAudioFile) return;
 
     setIsProcessing(true);
 
     try {
       const arrayBuffer = await new AudioContext().decodeAudioData(
-        await audioFile.arrayBuffer()
+        await currentAudioFile.arrayBuffer()
       );
       const region = regionRef.current;
 
@@ -181,12 +182,15 @@ export const useWaveform = ({ audioFile, waveformRef }: UseWaveformProps) => {
       // Create a new File object from the Blob
       const newAudioFile = new File(
         [wavBlob],
-        `${audioFile.name.split(".")[0]}_cut.wav`,
+        `${currentAudioFile.name.split(".")[0]}_cut.wav`,
         {
           type: "audio/wav",
         }
       );
 
+      // Update the current audio file reference
+      setCurrentAudioFile(newAudioFile);
+      
       // Initialize a new waveform with the cut audio
       await initializeWaveSurfer(newAudioFile);
     } catch (error) {
@@ -197,13 +201,13 @@ export const useWaveform = ({ audioFile, waveformRef }: UseWaveformProps) => {
   };
 
   const handleDownloadRegion = async () => {
-    if (!wavesurfer.current || !regionRef.current || !audioFile) return;
+    if (!wavesurfer.current || !regionRef.current || !currentAudioFile) return;
 
     setIsProcessing(true);
 
     try {
       const arrayBuffer = await new AudioContext().decodeAudioData(
-        await audioFile.arrayBuffer()
+        await currentAudioFile.arrayBuffer()
       );
       const region = regionRef.current;
 
@@ -260,7 +264,7 @@ export const useWaveform = ({ audioFile, waveformRef }: UseWaveformProps) => {
       const url = URL.createObjectURL(wavBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${audioFile.name.split(".")[0]}_trimmed.wav`;
+      a.download = `${currentAudioFile.name.split(".")[0]}_trimmed.wav`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
